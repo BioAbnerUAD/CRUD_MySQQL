@@ -133,7 +133,15 @@ namespace CRUD_Mysql
             {
                 if(alumnos.Columns[i].DataType == typeof(DateTime))
                 {
-                    var value = (DateTime)form.dataGridView1.Rows[i - 1].Cells[1].Value;
+                    DateTime value;
+                    try
+                    {
+                        value = (DateTime)form.dataGridView1.Rows[i - 1].Cells[1].Value;
+                    }
+                    catch(InvalidCastException)
+                    {
+                        value = DateTime.Parse((String)form.dataGridView1.Rows[i - 1].Cells[1].Value);
+                    }
                     query += "'" + value.ToString("yyyy-MM-dd HH:mm:ss") + "'" + ",";
                 }
                 else
