@@ -25,6 +25,10 @@ namespace CRUD_Mysql
                 {
                     dataGridView1.Rows.Add(col.ColumnName, "");
                 }
+                else if (col.DataType == typeof(DateTime))
+                {
+                    dataGridView1.Rows.Add(col.ColumnName, new DateTimePicker());
+                }
                 else
                 {
                     dataGridView1.Rows.Add(col.ColumnName, Activator.CreateInstance(col.DataType));
@@ -43,7 +47,16 @@ namespace CRUD_Mysql
             dataGridView1.Columns.Add("Values", "");
             for (int i = 1; i < row.Table.Columns.Count; i++)
             {
-                dataGridView1.Rows.Add(row.Table.Columns[i].ColumnName, row[i]);
+                if(row.Table.Columns[i].DataType == typeof(DateTime))
+                {
+                    var dtp = new DateTimePicker();
+                    dataGridView1.Rows.Add(row.Table.Columns[i].ColumnName, dtp);
+                    dtp.Value = (DateTime)row[i];
+                }
+                else
+                {
+                    dataGridView1.Rows.Add(row.Table.Columns[i].ColumnName, row[i]);
+                }
             }
             dataGridView1.Columns[0].ReadOnly = true;
             dataGridView1.AutoResizeColumns();

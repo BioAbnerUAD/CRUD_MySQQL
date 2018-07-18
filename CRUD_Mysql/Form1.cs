@@ -94,7 +94,7 @@ namespace CRUD_Mysql
                 query += alumnos.Columns[i].ColumnName + "=";
                 if (alumnos.Columns[i].DataType == typeof(DateTime))
                 {
-                    var value = (DateTime)form.dataGridView1.Rows[i - 1].Cells[1].Value;
+                    var value = ((DateTimePicker)form.dataGridView1.Rows[i - 1].Cells[1].Value).Value;
                     query += "'" + value.ToString("yyyy-MM-dd HH:mm:ss") + "'" + ",";
                 }
                 else
@@ -133,15 +133,7 @@ namespace CRUD_Mysql
             {
                 if(alumnos.Columns[i].DataType == typeof(DateTime))
                 {
-                    DateTime value;
-                    try
-                    {
-                        value = (DateTime)form.dataGridView1.Rows[i - 1].Cells[1].Value;
-                    }
-                    catch(InvalidCastException)
-                    {
-                        value = DateTime.Parse((String)form.dataGridView1.Rows[i - 1].Cells[1].Value);
-                    }
+                    var value = ((DateTimePicker)form.dataGridView1.Rows[i - 1].Cells[1].Value).Value;
                     query += "'" + value.ToString("yyyy-MM-dd HH:mm:ss") + "'" + ",";
                 }
                 else
