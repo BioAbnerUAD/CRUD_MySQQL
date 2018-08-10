@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -13,6 +14,9 @@ namespace CRUD_Mysql
     public partial class Form1 : Form
     {
         DBConnection connection;
+
+        public string TableName { get; private set; }
+
         public Form1()
         {
             InitializeComponent();
@@ -37,74 +41,64 @@ namespace CRUD_Mysql
         {
             dataGridView1.DataSource = null;
             dataGridView1.Columns.Clear();
-            DataTable alumnos = connection.SelectQuery("Select * from Alumnos");
-            dataGridView1.DataSource = alumnos;
-
-            var editBtnColumn = new DataGridViewButtonColumn()
-            {
-                Text = "Edit",
-                UseColumnTextForButtonValue = true,
-                DataPropertyName = "Edit"
-            };
-            dataGridView1.Columns.Add(editBtnColumn);
-
-            var deleteBtnColumn = new DataGridViewButtonColumn()
-            {
-                Text = "Delete",
-                UseColumnTextForButtonValue = true,
-                DataPropertyName = "Delete"
-            };
-            dataGridView1.Columns.Add(deleteBtnColumn);
+            DataTable tabla = connection.SelectQuery("Select * from '" + TableName + "'");
+            dataGridView1.DataSource = tabla;
             dataGridView1.AutoResizeColumns();
+            dataGridView1.Columns[0].ReadOnly = true;
         }
-
-        private void DataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        
+        private void Button1_Click(object sender, EventArgs e)
         {
-            var senderGrid = (DataGridView)sender;
+            DataTable tabla = dataGridView1.DataSource as DataTable;
 
-            if (senderGrid.Columns[e.ColumnIndex] is DataGridViewButtonColumn &&
-                e.RowIndex >= 0)
+            Form2 form = new Form2("Insert", tabla);
+            form.ShowDialog();
+            if (!form.Submited) return;
+            string query = "INSERT into " + TableName + "(";
+            List<KeyValuePair<string,object>> args = new List<KeyValuePair<string, object>>();
+            foreach (var col in (from DataColumn c in tabla.Columns select c).Skip(1))
             {
-                if(senderGrid.Columns[e.ColumnIndex].DataPropertyName == "Edit")
-                {
-                    DataTable alumnos = dataGridView1.DataSource as DataTable;
-                    Form2 form = new Form2("Update",alumnos.Rows[e.RowIndex]);
-                    form.ShowDialog();
-                    if (!form.submited) return;
-                    UpdateField((int)senderGrid.Rows[e.RowIndex].Cells[0].Value, form);
-                }
-                else if (senderGrid.Columns[e.ColumnIndex].DataPropertyName == "Delete")
-                {
-                    bool success = connection.ExecuteQuery("Delete from Alumnos where id =" +
-                        senderGrid.Rows[e.RowIndex].Cells[0].Value.ToString());
-
-                    if (!success) MessageBox.Show("Unknow failure where deleting index.\n" +
-                         "The field might not exist anymore.");
-                    UpdateTableData();
-                }
+                query += col.ColumnName + ",";
             }
-        }
-
-        private void UpdateField(int id, Form2 form)
-        {
-            DataTable alumnos = dataGridView1.DataSource as DataTable;
-            string query = "UPDATE Alumnos SET ";
-            for (int i = 1; i < alumnos.Columns.Count; i++)
+            query = query.Remove(query.Length - 1);
+            query += ") VALUES (";
+            for (int i = 1; i < tabla.Columns.Count; i++)
             {
-                query += alumnos.Columns[i].ColumnName + "=";
-                if (alumnos.Columns[i].DataType == typeof(DateTime))
+                query += "@val" + i + ",";
+                if (tabla.Columns[i].DataType == typeof(DateTime))
                 {
-                    var value = ((DateTimePicker)form.dataGridView1.Rows[i - 1].Cells[1].Value).Value;
-                    query += "'" + value.ToString("yyyy-MM-dd HH:mm:ss") + "'" + ",";
+                    var value = (DateTime)form.dataGridView1.Rows[0].Cells[i - 1].Value;
+                    args.Add(new KeyValuePair<string, object>
+                        ("@val" + i, value.ToString("yyyy-MM-dd HH:mm:ss")));
                 }
                 else
                 {
-                    query += "'" + form.dataGridView1.Rows[i - 1].Cells[1].Value + "'" + ",";
+                    args.Add(new KeyValuePair<string, object>
+                        ("@val" + i, form.dataGridView1.Rows[0].Cells[i - 1].Value));
                 }
             }
             query = query.Remove(query.Length - 1);
-            query += "WHERE id=" + id;
-            if (connection.ExecuteQuery(query))
+            query += ")";
+            if(connection.ExecuteQuery(query, args.ToArray()))
+            {
+                MessageBox.Show("Se logró insertar con éxito");
+                UpdateTableData();
+            }
+            else
+            {
+                MessageBox.Show("Ha ocurrido un error");
+            }
+        }
+
+        private void DataGridView1_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            DataTable tabla = dataGridView1.DataSource as DataTable;
+            string query = "UPDATE " + TableName + " SET "
+                + tabla.Columns[e.ColumnIndex].ColumnName + "= @val "
+                + "WHERE id = " + tabla.Rows[e.RowIndex][0];
+
+            if (connection.ExecuteQuery(query, 
+                new KeyValuePair<string, object>("@val", tabla.Rows[e.RowIndex][e.ColumnIndex])))
             {
                 MessageBox.Show("Se logró actualizar con éxito");
                 UpdateTableData();
@@ -115,43 +109,16 @@ namespace CRUD_Mysql
             }
         }
 
-        private void Button1_Click(object sender, EventArgs e)
+        private void DataGridView1_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
         {
-            DataTable alumnos = dataGridView1.DataSource as DataTable;
+            var senderGrid = sender as DataGridView;
+            bool success = connection.ExecuteQuery("Delete from Alumnos where id =" +
+                        e.Row.Cells[0].Value.ToString());
 
-            Form2 form = new Form2("Insert",alumnos);
-            form.ShowDialog();
-            if (!form.submited) return;
-            string query = "INSERT into Alumnos(";
-            foreach (var col in (from DataColumn c in alumnos.Columns select c).Skip(1))
-            {
-                query += col.ColumnName + ",";
-            }
-            query = query.Remove(query.Length - 1);
-            query += ") VALUES (";
-            for (int i = 1; i < alumnos.Columns.Count; i++)
-            {
-                if(alumnos.Columns[i].DataType == typeof(DateTime))
-                {
-                    var value = ((DateTimePicker)form.dataGridView1.Rows[i - 1].Cells[1].Value).Value;
-                    query += "'" + value.ToString("yyyy-MM-dd HH:mm:ss") + "'" + ",";
-                }
-                else
-                {
-                    query += "'" + form.dataGridView1.Rows[i - 1].Cells[1].Value + "'" + ",";
-                }
-            }
-            query = query.Remove(query.Length - 1);
-            query += ")";
-            if(connection.ExecuteQuery(query))
-            {
-                MessageBox.Show("Se logró insertar con éxito");
-                UpdateTableData();
-            }
-            else
-            {
-                MessageBox.Show("Ha ocurrido un error");
-            }
+            if (!success) MessageBox.Show("Unknow failure where deleting index.\n" +
+                 "The field might not exist anymore.");
+            UpdateTableData();
+            e.Cancel = true;
         }
     }
 }

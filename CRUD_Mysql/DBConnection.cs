@@ -40,7 +40,7 @@ namespace CRUD_Mysql
                 string connstring = string.Format("Server={0}; Database={1}; Uid={2}; Pwd={3};SslMode=none;",
                    serverIP, databaseName, username, password);
                 connection = new MySqlConnection(connstring);
-                
+
                 try
                 {
                     connection.Open();
@@ -66,10 +66,39 @@ namespace CRUD_Mysql
             return result;
         }
 
+        public DataTable SelectQuery(string query, params KeyValuePair<string, object>[] args)
+        {
+            MySqlCommand cmd = connection.CreateCommand();
+            cmd.CommandText = query;
+            foreach (var item in args)
+            {
+                cmd.Parameters.AddWithValue(item.Key, item.Value);
+            }
+            MySqlDataReader reader = cmd.ExecuteReader();
+            DataTable result = new DataTable();
+            result.Load(reader);
+            reader.Close();
+            return result;
+        }
+
         public bool ExecuteQuery(string query)
         {
             MySqlCommand cmd = connection.CreateCommand();
             cmd.CommandText = query;
+            MySqlDataReader reader = cmd.ExecuteReader();
+            reader.Close();
+            return reader.RecordsAffected > 0;
+        }
+
+        public bool ExecuteQuery(string query, params KeyValuePair<string,object>[] args)
+        {
+            MySqlCommand cmd = connection.CreateCommand();
+            cmd.CommandText = query;
+            foreach (var item in args)
+            {
+                cmd.Parameters.AddWithValue(item.Key, item.Value);
+            }
+            cmd.Prepare();
             MySqlDataReader reader = cmd.ExecuteReader();
             reader.Close();
             return reader.RecordsAffected > 0;
