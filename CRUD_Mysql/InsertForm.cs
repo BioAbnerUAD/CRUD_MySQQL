@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace CRUD_Mysql
 {
-    public partial class Form2 : Form
+    public partial class InsertForm : Form
     {
         private bool submited = false;
         public bool Submited
@@ -19,14 +19,21 @@ namespace CRUD_Mysql
             private set => submited = value;
         }
 
-        public Form2(string title, DataTable tabla)
+        public InsertForm(string title, DataTable tabla)
         {
             InitializeComponent();
             this.Text = title;
+            tabla.Rows.Clear();
+            List<object> values = new List<object>();
+            foreach (DataColumn col in tabla.Columns)
+            {
+                if (col.DataType == typeof(string)) values.Add(String.Empty);
+                else if (col.DataType == typeof(int)) values.Add(0);
+                else values.Add(null);
+            }
+            tabla.Rows.Add(values.ToArray());
             dataGridView1.DataSource = tabla;
-            dataGridView1.Columns.RemoveAt(0);
-            dataGridView1.Rows.Clear();
-            dataGridView1.Rows.Add();
+            dataGridView1.Columns[0].Visible = false;
             dataGridView1.AutoResizeColumns();
         }
 

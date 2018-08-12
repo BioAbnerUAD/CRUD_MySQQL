@@ -11,37 +11,26 @@ using System.Windows.Forms;
 
 namespace CRUD_Mysql
 {
-    public partial class Form1 : Form
+    public partial class CRUDForm : Form
     {
         DBConnection connection;
 
         public string TableName { get; private set; }
+        public bool PressedBack { get; internal set; }
 
-        public Form1()
+        public CRUDForm(DBConnection connection, string tableName)
         {
             InitializeComponent();
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
-        {
-            string errorMsg = string.Empty;
-            connection = new DBConnection("138.68.20.16", "aramirez", "aramirez", "1234567890");
-            if (connection.Connect(ref errorMsg))
-            {
-                UpdateTableData();
-            }
-            else
-            {
-                MessageBox.Show("Conection Failure: " + errorMsg);
-                Close();
-            }
+            this.connection = connection;
+            TableName = tableName;
+            UpdateTableData();
         }
 
         private void UpdateTableData()
         {
             dataGridView1.DataSource = null;
             dataGridView1.Columns.Clear();
-            DataTable tabla = connection.SelectQuery("Select * from '" + TableName + "'");
+            DataTable tabla = connection.SelectQuery("Select * from " + TableName + ";");
             dataGridView1.DataSource = tabla;
             dataGridView1.AutoResizeColumns();
             dataGridView1.Columns[0].ReadOnly = true;
@@ -51,7 +40,7 @@ namespace CRUD_Mysql
         {
             DataTable tabla = dataGridView1.DataSource as DataTable;
 
-            Form2 form = new Form2("Insert", tabla);
+            InsertForm form = new InsertForm("Insert", tabla.Copy());
             form.ShowDialog();
             if (!form.Submited) return;
             string query = "INSERT into " + TableName + "(";
@@ -67,14 +56,22 @@ namespace CRUD_Mysql
                 query += "@val" + i + ",";
                 if (tabla.Columns[i].DataType == typeof(DateTime))
                 {
-                    var value = (DateTime)form.dataGridView1.Rows[0].Cells[i - 1].Value;
-                    args.Add(new KeyValuePair<string, object>
-                        ("@val" + i, value.ToString("yyyy-MM-dd HH:mm:ss")));
+                    try
+                    {
+                        var value = (DateTime)form.dataGridView1.Rows[0].Cells[i].Value;
+                        args.Add(new KeyValuePair<string, object>
+                            ("@val" + i, value.ToString("yyyy-MM-dd HH:mm:ss")));
+                    }
+                    catch(InvalidCastException)
+                    {
+                        args.Add(new KeyValuePair<string, object>
+                            ("@val" + i, (new DateTime()).ToString("yyyy-MM-dd HH:mm:ss")));
+                    }
                 }
                 else
                 {
                     args.Add(new KeyValuePair<string, object>
-                        ("@val" + i, form.dataGridView1.Rows[0].Cells[i - 1].Value));
+                        ("@val" + i, form.dataGridView1.Rows[0].Cells[i].Value));
                 }
             }
             query = query.Remove(query.Length - 1);
@@ -112,13 +109,19 @@ namespace CRUD_Mysql
         private void DataGridView1_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
         {
             var senderGrid = sender as DataGridView;
-            bool success = connection.ExecuteQuery("Delete from Alumnos where id =" +
-                        e.Row.Cells[0].Value.ToString());
+            bool success = connection.ExecuteQuery("Delete from " + TableName + " where id = " +
+                        e.Row.Cells[0].Value.ToString() + ";");
 
             if (!success) MessageBox.Show("Unknow failure where deleting index.\n" +
                  "The field might not exist anymore.");
             UpdateTableData();
             e.Cancel = true;
+        }
+
+        private void Button2_Click(object sender, EventArgs e)
+        {
+            PressedBack = true;
+            this.Close();
         }
     }
 }
