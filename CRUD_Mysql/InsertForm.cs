@@ -29,6 +29,8 @@ namespace CRUD_Mysql
             {
                 if (col.DataType == typeof(string)) values.Add(String.Empty);
                 else if (col.DataType == typeof(int)) values.Add(0);
+                else if (col.DataType == typeof(uint)) values.Add(0u);
+                else if (col.DataType == typeof(bool)) values.Add(false);
                 else values.Add(null);
             }
             tabla.Rows.Add(values.ToArray());
